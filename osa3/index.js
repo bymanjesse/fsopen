@@ -32,6 +32,9 @@ const contacts = {
 // Cors middleware
 app.use(cors())
 
+//For Express to display static content - index.html
+app.use(express.static('build'))
+
 // Use morgan middleware to log HTTP requests to console
 app.use(morgan('tiny'));
 
