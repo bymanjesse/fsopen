@@ -1,7 +1,19 @@
+require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors')
 const app = express();
+const mongoose = require('mongoose');
+const Contact = require('./models/contact')
+
+
+
+const MONGODB_URI = process.env.MONGODB_URI;
+
+
+// Yhdistetään MongoDB Atlas -tietokantaan
+mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true});
+
 
 
 const contacts = {
@@ -54,16 +66,35 @@ app.use((req, res, next) => {
     next();
   });
 
-  app.get('/api/persons', (req, res) => {
-    res.json(contacts.persons);
+  app.get('/api/persons', async (req, res) => {
+    const contacts = await Contact.find({}, '-__v'); // <-- specify the name of the collection here, and exclude the __v field
+    res.json(contacts);
   });
 
-app.get('/info', (req, res) => {
-    const time = new Date();
-    const info = `<p>Phonebook has info for ${contacts.persons.length} people</p><p>${time}</p>`;
-    res.send(info);
-  });
+app.get('/info', async (req, res) => {
+  const contactCount = await Contact.countDocuments();
+  const time = new Date();
+  const info = `<p>Phonebook has info for ${contactCount} people</p><p>${time}</p>`;
+  res.send(info);
+});
 
+
+app.get('/api/persons/:id', (req, res) => {
+  Contact.findById(req.params.id)
+    .then(contact => {
+      if (contact) {
+        res.json(contact);
+      } else {
+        res.status(404).send('Contact not found');
+      }
+    })
+    .catch(() => {
+      res.status(404).send('Contact not found');
+    });
+});
+
+  // Old methods for get and post
+/*
 app.get('/api/persons/:id', (req, res) => {
 const id = Number(req.params.id);
 const contact = contacts.persons.find(person => person.id === id);
@@ -73,6 +104,7 @@ if (contact) {
     res.status(404).send('Contact not found');
 }
 });
+
 
 app.post('/api/persons', (req, res) => {
     const body = req.body;
@@ -91,6 +123,30 @@ app.post('/api/persons', (req, res) => {
     contacts.persons = contacts.persons.concat(newContact);
     res.json(newContact);
   });
+*/
+
+app.post('/api/persons', (req, res) => {
+  const body = req.body;
+
+  if (!body.name || !body.number) {
+    return res.status(400).json({ error: 'Name or number missing' });
+  }
+
+  Contact.findOne({ name: body.name }).then(duplicateName => {
+    if (duplicateName) {
+      return res.status(400).json({ error: 'Name already exists in contacts' });
+    }
+
+    const newContact = new Contact({
+      name: body.name,
+      number: body.number,
+    });
+
+    newContact.save().then(savedContact => {
+      res.json(savedContact);
+    });
+  });
+});
 
 app.delete('/api/persons/:id', (req, res) => {
     const id = Number(req.params.id);
@@ -98,7 +154,7 @@ app.delete('/api/persons/:id', (req, res) => {
     res.status(204).end();
   });
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
