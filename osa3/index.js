@@ -15,7 +15,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 // Yhdistetään MongoDB Atlas -tietokantaan
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true});
 
-
+// Virheiden käsittely
 const errorHandler = (error, request, response, next) => {
   console.error(error.message);
 
@@ -24,15 +24,18 @@ const errorHandler = (error, request, response, next) => {
   } else if (error instanceof NotFoundError) {
     return response.status(404).send({ error: error.message });
   } else if (error instanceof ValidationError) {
-    return response.status(400).send({ error: error.message });
+    return response.status(422).send({ error: error.message });
+  } else if (error.name === 'ValidationError') {
+    return response.status(422).send({ error: error.message });
   } else if (error instanceof DuplicateError) {
-    return response.status(400).send({ error: error.message });
+    return response.status(409).send({ error: error.message });
   }
 
   next(error);
 };
 
 
+// Kovakoodatut kontaktit
 const contacts = {
   "persons": [
     {
@@ -78,7 +81,7 @@ app.use(errorHandler)
 
 
 
-// Log HTTP POST requests to console and display data
+// Konsolilogit
 app.use((req, res, next) => {
     if (req.method === 'POST') {
       console.log(`${req.method} ${req.originalUrl} ${JSON.stringify(req.body)}`);
@@ -86,13 +89,13 @@ app.use((req, res, next) => {
     next();
   });
 
-  
+// Kaikkien kontaktien haku
 app.get('/api/persons', async (req, res) => {
   const contacts = await Contact.find({}, '-__v'); // <-- specify the name of the collection here, and exclude the __v field
   res.json(contacts);
 });
 
-
+// Infon haku
 app.get('/info', async (req, res) => {
   const contactCount = await Contact.countDocuments();
   const time = new Date();
@@ -100,7 +103,7 @@ app.get('/info', async (req, res) => {
   res.send(info);
 });
 
-
+// Idllä haku
 app.get('/api/persons/:id', async (req, res, next) => {
   try {
     const contact = await Contact.findById(req.params.id);
@@ -114,7 +117,7 @@ app.get('/api/persons/:id', async (req, res, next) => {
   }
 });
 
-
+// Syötetään kontakti
 app.post('/api/persons', async (req, res, next) => {
   const body = req.body;
 
@@ -141,6 +144,7 @@ app.post('/api/persons', async (req, res, next) => {
   }
 });
 
+// Päivitetään olemassa oleva kontakti
 app.put('/api/persons/:id', async (req, res, next) => {
   const body = req.body;
 
@@ -177,7 +181,7 @@ app.put('/api/persons/:id', async (req, res, next) => {
 });
 
 
-
+// Poistetaan kontakti
 app.delete('/api/persons/:id', (req, res, next) => {
   Contact.findByIdAndRemove(req.params.id)
     .then(result => {
