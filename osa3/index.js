@@ -5,6 +5,7 @@ const cors = require('cors')
 const app = express();
 const mongoose = require('mongoose');
 const Contact = require('./models/contact')
+const { NotFoundError, ValidationError, DuplicateError } = require('./errors');
 
 
 
@@ -16,14 +17,20 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true}
 
 
 const errorHandler = (error, request, response, next) => {
-  console.error(error.message)
+  console.error(error.message);
 
   if (error.name === 'CastError') {
-    return response.status(400).send({ error: 'malformatted id' })
+    return response.status(400).send({ error: 'malformatted id' });
+  } else if (error instanceof NotFoundError) {
+    return response.status(404).send({ error: error.message });
+  } else if (error instanceof ValidationError) {
+    return response.status(400).send({ error: error.message });
+  } else if (error instanceof DuplicateError) {
+    return response.status(400).send({ error: error.message });
   }
 
-  next(error)
-}
+  next(error);
+};
 
 
 const contacts = {
@@ -79,10 +86,12 @@ app.use((req, res, next) => {
     next();
   });
 
-  app.get('/api/persons', async (req, res) => {
-    const contacts = await Contact.find({}, '-__v'); // <-- specify the name of the collection here, and exclude the __v field
-    res.json(contacts);
-  });
+  
+app.get('/api/persons', async (req, res) => {
+  const contacts = await Contact.find({}, '-__v'); // <-- specify the name of the collection here, and exclude the __v field
+  res.json(contacts);
+});
+
 
 app.get('/info', async (req, res) => {
   const contactCount = await Contact.countDocuments();
@@ -92,29 +101,32 @@ app.get('/info', async (req, res) => {
 });
 
 
-app.get('/api/persons/:id', (req, res, next) => {
-  Contact.findById(req.params.id)
-    .then(contact => {
-      if (contact) {
-        res.json(contact);
-      } else {
-        res.status(404).end();
-      }
-    })
-    .catch(error => next(error))
+app.get('/api/persons/:id', async (req, res, next) => {
+  try {
+    const contact = await Contact.findById(req.params.id);
+    if (contact) {
+      res.json(contact);
+    } else {
+      throw new NotFoundError('Contact not found');
+    }
+  } catch (error) {
+    next(error);
+  }
 });
 
 
-app.post('/api/persons', (req, res) => {
+app.post('/api/persons', async (req, res, next) => {
   const body = req.body;
 
   if (!body.name || !body.number) {
-    return res.status(400).json({ error: 'Name or number missing' });
+    throw new ValidationError('Name or number missing');
   }
 
-  Contact.findOne({ name: body.name }).then(duplicateName => {
+  try {
+    const duplicateName = await Contact.findOne({ name: body.name });
+
     if (duplicateName) {
-      return res.status(400).json({ error: 'Name already exists in contacts' });
+      throw new DuplicateError('Name already exists in contacts');
     }
 
     const newContact = new Contact({
@@ -122,11 +134,49 @@ app.post('/api/persons', (req, res) => {
       number: body.number,
     });
 
-    newContact.save().then(savedContact => {
-      res.json(savedContact);
-    });
-  });
+    const savedContact = await newContact.save();
+    res.json(savedContact);
+  } catch (error) {
+    next(error);
+  }
 });
+
+app.put('/api/persons/:id', async (req, res, next) => {
+  const body = req.body;
+
+  if (!body.name || !body.number) {
+    throw new ValidationError('Name or number missing');
+  }
+
+  const contactToUpdate = {
+    name: body.name,
+    number: body.number,
+  };
+
+  try {
+    const updatedContact = await Contact.findByIdAndUpdate(
+      req.params.id,
+      contactToUpdate,
+      { new: true, runValidators: true, context: 'query' }
+    );
+
+    if (updatedContact) {
+      res.json(updatedContact);
+    } else {
+      throw new NotFoundError('Contact not found');
+    }
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      throw new ValidationError(error.message);
+    } else if (error instanceof NotFoundError) {
+      next(error);
+    } else {
+      next(error);
+    }
+  }
+});
+
+
 
 app.delete('/api/persons/:id', (req, res, next) => {
   Contact.findByIdAndRemove(req.params.id)
