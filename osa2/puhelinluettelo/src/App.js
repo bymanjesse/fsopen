@@ -128,13 +128,9 @@ const App = () => {
         .catch((error) => {
           console.log(error);
           if (error.response && error.response.data && error.response.data.error) {
-            if (error.response.status === 422) { // Handle validation errors
-              setErrorMessage("Phone number validation failed: " + error.response.data.error);
-            } else if (error.response.status === 409) { // Handle duplicate errors
-              setErrorMessage("Name already exists in contacts.");
-            } else {
-              setErrorMessage("An unknown11 error occurred.");
-            }
+            let errorMessage = error.response.data.error;
+        
+            setErrorMessage(errorMessage);
           } else {
             setErrorMessage("An unknown error occurred.");
           }
@@ -143,7 +139,7 @@ const App = () => {
 
       setNewName("");
       setNewNumber("");
-  }
+}
 };
 
   const handleNameChange = (event) => {
