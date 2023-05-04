@@ -15,6 +15,16 @@ const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true});
 
 
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  }
+
+  next(error)
+}
+
 
 const contacts = {
   "persons": [
@@ -56,6 +66,9 @@ app.use(express.json());
 // Middleware to parse JSON in request body
 app.use(express.json());
 
+//Virheiden käsittelijä
+app.use(errorHandler)
+
 
 
 // Log HTTP POST requests to console and display data
@@ -79,51 +92,18 @@ app.get('/info', async (req, res) => {
 });
 
 
-app.get('/api/persons/:id', (req, res) => {
+app.get('/api/persons/:id', (req, res, next) => {
   Contact.findById(req.params.id)
     .then(contact => {
       if (contact) {
         res.json(contact);
       } else {
-        res.status(404).send('Contact not found');
+        res.status(404).end();
       }
     })
-    .catch(() => {
-      res.status(404).send('Contact not found');
-    });
+    .catch(error => next(error))
 });
 
-  // Old methods for get and post
-/*
-app.get('/api/persons/:id', (req, res) => {
-const id = Number(req.params.id);
-const contact = contacts.persons.find(person => person.id === id);
-if (contact) {
-    res.json(contact);
-} else {
-    res.status(404).send('Contact not found');
-}
-});
-
-
-app.post('/api/persons', (req, res) => {
-    const body = req.body;
-    if (!body.name || !body.number) {
-      return res.status(400).json({ error: 'Name or number missing' });
-    }
-    const duplicateName = contacts.persons.find(person => person.name === body.name);
-    if (duplicateName) {
-      return res.status(400).json({ error: 'Name already exists in contacts' });
-    }
-    const newContact = {
-      name: body.name,
-      number: body.number,
-      id: Math.floor(Math.random() * 1000000)
-    };
-    contacts.persons = contacts.persons.concat(newContact);
-    res.json(newContact);
-  });
-*/
 
 app.post('/api/persons', (req, res) => {
   const body = req.body;
@@ -148,11 +128,18 @@ app.post('/api/persons', (req, res) => {
   });
 });
 
-app.delete('/api/persons/:id', (req, res) => {
-    const id = Number(req.params.id);
-    contacts.persons = contacts.persons.filter(person => person.id !== id);
-    res.status(204).end();
-  });
+app.delete('/api/persons/:id', (req, res, next) => {
+  Contact.findByIdAndRemove(req.params.id)
+    .then(result => {
+      console.log('Deletion result:', result);
+      if (result) {
+        res.status(204).end();
+      } else {
+        res.status(404).json({ error: 'Contact not found' });
+      }
+    })
+    .catch(error => next(error));
+});
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {
