@@ -133,7 +133,7 @@ const App = () => {
             } else if (error.response.status === 409) { // Handle duplicate errors
               setErrorMessage("Name already exists in contacts.");
             } else {
-              setErrorMessage("An unknown error occurred.");
+              setErrorMessage("An unknown11 error occurred.");
             }
           } else {
             setErrorMessage("An unknown error occurred.");
