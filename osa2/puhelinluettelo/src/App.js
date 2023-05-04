@@ -51,7 +51,6 @@ const PersonForm = ({ newName, newNumber, handleNameChange, handleNumberChange, 
 };
 
 const MessageDisplay = ({ message, isError }) => {
-  console.log('message:', message);
   return message ? (
     <div className={`message ${isError ? 'error' : ''}`}>
       <p>{message}</p>
@@ -124,23 +123,11 @@ const App = () => {
           setPersons(persons.concat(data));
           setMessage(`Added ${data.name}`);
           setTimeout(() => setMessage(null), 2000);
-        })
-        .catch((error) => {
-          console.log(error);
-          if (error.response && error.response.data && error.response.data.error) {
-            let errorMessage = error.response.data.error;
-        
-            setErrorMessage(errorMessage);
-          } else {
-            setErrorMessage("An unknown error occurred.");
-          }
-          setTimeout(() => setErrorMessage(null), 5000);
         });
-
-      setNewName("");
-      setNewNumber("");
-}
-};
+      setNewName('');
+      setNewNumber('');
+    }
+  };
 
   const handleNameChange = (event) => {
     setNewName(event.target.value);
