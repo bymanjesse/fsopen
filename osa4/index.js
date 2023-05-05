@@ -23,25 +23,42 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
 app.use(cors())
 app.use(express.json())
 
-app.get('/api/blogs', (request, response) => {
-  Blog
-    .find({})
-    .then(blogs => {
-      response.json(blogs)
-    })
+app.get('/api/blogs', async (req, res) => {
+  try {
+    const blogs = await Blog.find({})
+    res.json(blogs)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to fetch blogs' })
+  }
 })
 
-app.post('/api/blogs', (request, response) => {
-  const blog = new Blog(request.body)
+app.post('/api/blogs', async (request, response) => {
+  const body = request.body
 
-  blog
-    .save()
-    .then(result => {
-      response.status(201).json(result)
-    })
+  if (!body.title || !body.url) {
+    return response.status(400).json({ error: 'title or url missing' })
+  }
+
+  const blog = new Blog({
+    title: body.title,
+    author: body.author || "",
+    url: body.url,
+    likes: body.likes || 0
+  })
+
+  try {
+    const result = await blog.save()
+    response.status(201).json(result)
+  } catch (error) {
+    // Handle any errors that may occur during the save operation
+    response.status(500).json({ error: 'An error occurred while saving the blog' })
+  }
 })
 
-const PORT = 3003
+const PORT = 3004
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
+
+module.exports = app
