@@ -9,8 +9,17 @@ const { NotFoundError, ValidationError, DuplicateError } = require('./errors')
 
 const MONGODB_URI = process.env.MONGODB_URI
 
+console.log('connecting to', MONGODB_URI)
+
 // Yhdistetään MongoDB Atlas -tietokantaan
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(result => {
+    console.log('connected to MongoDB')
+  })
+  .catch((error) => {
+    console.log('error connecting to MongoDB:', error.message)
+  })
+
 
 // Virheiden käsittely
 const errorHandler = (error, request, response, next) => {

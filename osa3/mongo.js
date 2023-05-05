@@ -13,7 +13,7 @@ const MONGODB_URI =
 `mongodb+srv://jesseb:${password}@cluster0.emldk7r.mongodb.net/database?retryWrites=true&w=majority`
 
 // Yhdistetään MongoDB Atlas -tietokantaan
-mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+//mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 
 // Määritellään yhteystietojen skeema
 const contactSchema = new mongoose.Schema({
