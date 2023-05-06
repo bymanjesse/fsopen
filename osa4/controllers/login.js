@@ -18,11 +18,8 @@ loginRouter.post('/', async (req, res) => {
     });
   }
 
-  const token = jwt.sign(
-    { id: user._id, username: user.username },
-    jwtSecret,
-    { expiresIn: 60 * 60 }
-  );
+  const token = jwt.sign({ id: user._id, username: user.username }, jwtSecret, { expiresIn: 3600 });
+
 
   res.status(200).send({ token, username: user.username, name: user.name });
 });
